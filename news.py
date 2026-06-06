@@ -214,7 +214,11 @@ def summarize(results):
         },
         timeout=120,
     )
-    resp.raise_for_status()
+    if not resp.ok:
+        # Печатаем тело ответа — там Anthropic пишет точную причину ошибки
+        print(f"[error] Anthropic API вернул {resp.status_code}:", file=sys.stderr)
+        print(resp.text, file=sys.stderr)
+        resp.raise_for_status()
     data = resp.json()
     parts = [b["text"] for b in data["content"] if b.get("type") == "text"]
     return "\n".join(parts).strip()
