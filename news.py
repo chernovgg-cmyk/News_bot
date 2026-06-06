@@ -208,17 +208,13 @@ def summarize(results):
         },
         json={
             "model": "claude-sonnet-4-6",
-            "max_tokens": 4096,
+            "max_tokens": 3000,
             "system": system,
             "messages": [{"role": "user", "content": user}],
         },
         timeout=120,
     )
-    if not resp.ok:
-        # Печатаем тело ответа — там Anthropic пишет точную причину ошибки
-        print(f"[error] Anthropic API вернул {resp.status_code}:", file=sys.stderr)
-        print(resp.text, file=sys.stderr)
-        resp.raise_for_status()
+    resp.raise_for_status()
     data = resp.json()
     parts = [b["text"] for b in data["content"] if b.get("type") == "text"]
     return "\n".join(parts).strip()
@@ -263,11 +259,6 @@ def send_telegram(text):
 # ---------------------------------------------------------------------------
 
 def main():
-    print(">>> news.py версия 2 (с выводом тела ошибки) <<<")
-    # Санити-проверка ключа: печатаем только длину и первые/последние символы
-    k = ANTHROPIC_API_KEY
-    print(f"[debug] длина API-ключа: {len(k)}; начинается на: {k[:8]}; "
-          f"заканчивается на: {k[-4:]}")
     today = datetime.now(timezone.utc).astimezone(
         timezone(timedelta(hours=3))  # МСК
     ).strftime("%d.%m.%Y")
