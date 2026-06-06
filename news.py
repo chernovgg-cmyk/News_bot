@@ -18,7 +18,7 @@ import requests
 # КОНФИГУРАЦИЯ
 # ---------------------------------------------------------------------------
 
-ANTHROPIC_API_KEY = os.environ["ANTHROPIC_API_KEY"]
+DEEPSEEK_API_KEY = os.environ["DEEPSEEK_API_KEY"]
 TELEGRAM_TOKEN = os.environ["TELEGRAM_TOKEN"]
 TELEGRAM_CHAT_ID = os.environ["TELEGRAM_CHAT_ID"]
 
@@ -200,24 +200,28 @@ def summarize(results):
     )
 
     resp = requests.post(
-        "https://api.anthropic.com/v1/messages",
+        "https://api.deepseek.com/chat/completions",
         headers={
-            "x-api-key": ANTHROPIC_API_KEY,
-            "anthropic-version": "2023-06-01",
-            "content-type": "application/json",
+            "Authorization": f"Bearer {DEEPSEEK_API_KEY}",
+            "Content-Type": "application/json",
         },
         json={
-            "model": "claude-sonnet-4-6",
-            "max_tokens": 3000,
-            "system": system,
-            "messages": [{"role": "user", "content": user}],
+            "model": "deepseek-v4-flash",
+            "max_tokens": 4096,
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
         },
-        timeout=120,
+        timeout=180,
     )
-    resp.raise_for_status()
+    if not resp.ok:
+        # Печатаем тело ответа — там DeepSeek пишет точную причину ошибки
+        print(f"[error] DeepSeek API вернул {resp.status_code}:", file=sys.stderr)
+        print(resp.text, file=sys.stderr)
+        resp.raise_for_status()
     data = resp.json()
-    parts = [b["text"] for b in data["content"] if b.get("type") == "text"]
-    return "\n".join(parts).strip()
+    return data["choices"][0]["message"]["content"].strip()
 
 
 # ---------------------------------------------------------------------------
@@ -259,6 +263,11 @@ def send_telegram(text):
 # ---------------------------------------------------------------------------
 
 def main():
+    print(">>> news.py версия 3 (DeepSeek) <<<")
+    # Санити-проверка ключа: печатаем только длину и первые/последние символы
+    k = DEEPSEEK_API_KEY
+    print(f"[debug] длина API-ключа: {len(k)}; начинается на: {k[:6]}; "
+          f"заканчивается на: {k[-4:]}")
     today = datetime.now(timezone.utc).astimezone(
         timezone(timedelta(hours=3))  # МСК
     ).strftime("%d.%m.%Y")
